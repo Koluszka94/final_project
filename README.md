@@ -1,22 +1,32 @@
 # Aplikacja analityczna danych pacjentów
 
-Desktopowa aplikacja w Python + PyQt do importu danych medycznych z pliku CSV do bazy SQLite oraz wykonywania analiz na danych relacyjnych.
+Desktopowa aplikacja w Pythonie służąca do importu danych medycznych z pliku CSV do bazy SQLite, a następnie do ich przeglądania, filtrowania, analizowania i wizualizacji w interfejsie PyQt.
 
-Projekt działa zgodnie z docelowym przepływem:
+Projekt został przygotowany tak, aby pokazać pełny przepływ pracy z danymi:
 
-`CSV -> SQLite -> aplikacja analityczna w PyQt`
+`CSV -> czyszczenie i normalizacja -> relacyjna baza SQLite -> zapytania SQL -> GUI`
 
-Plik CSV jest wyłącznie źródłem importu. Wszystkie filtry, analizy grup, widoki SQL i wykresy działają już na danych zapisanych w SQLite.
+Plik `EHR.csv` jest tylko źródłem wejściowym. Po imporcie cała dalsza praca odbywa się już na danych zapisanych w bazie relacyjnej.
+
+## Cel projektu
+
+Projekt prezentuje:
+
+- import i czyszczenie danych medycznych z pliku CSV,
+- projekt relacyjnej bazy danych w SQLite,
+- wykorzystanie widoków SQL i prostych mechanizmów walidacji w bazie,
+- warstwową architekturę aplikacji desktopowej,
+- analizy grup pacjentów oraz wykresy generowane na podstawie danych SQL.
 
 ## Najważniejsze funkcje
 
-- import `EHR.csv` do znormalizowanej bazy SQLite
-- wyszukiwanie i filtrowanie danych pacjentów oraz pobytów
-- porównywanie grup pacjentów z użyciem zapytań SQL
-- korzystanie z widoków SQL i logiki bazodanowej
-- osobna sekcja wykresów osadzona w GUI
-- eksport wyników tabel do CSV
-- eksport wykresów do PNG
+- import `EHR.csv` do znormalizowanej bazy `ehr_app.db`,
+- automatyczne czyszczenie i ujednolicanie danych podczas importu,
+- wyszukiwanie i filtrowanie rekordów pacjentów oraz pobytów oddziałowych,
+- porównywanie grup pacjentów według wybranych cech,
+- korzystanie z gotowych widoków SQL,
+- generowanie wykresów w aplikacji,
+- eksport tabel do CSV i wykresów do PNG.
 
 ## Technologie
 
@@ -26,194 +36,162 @@ Plik CSV jest wyłącznie źródłem importu. Wszystkie filtry, analizy grup, wi
 - matplotlib
 - SQLite
 
-## Struktura projektu
+## Architektura projektu
 
 ```text
-app.py
-analytics/
-database/
-gui/
-queries/
-services/
-scripts/
-tests/
-EHR.csv
-requirements.txt
-README.md
+app.py                 # punkt startowy aplikacji
+analytics/             # agregacje do analiz grup i wykresów
+database/              # schemat SQLite, połączenie i import CSV
+gui/                   # interfejs PyQt
+queries/               # zapytania SQL do przeglądania danych i widoków
+services/              # warstwa pośrednia między GUI a bazą
+scripts/               # pomocnicze skrypty CLI
+tests/                 # testy smoke backendu
+EHR.csv                # przykładowy zbiór wejściowy
 ```
 
-## Warstwy aplikacji
+### Warstwy aplikacji
 
 - `app.py`
-  Punkt startowy aplikacji.
+  Uruchamia aplikację PyQt i tworzy główne okno.
 - `gui/`
-  Interfejs PyQt z sekcjami importu, przeglądania danych, analiz grup, wykresów i widoków SQL.
+  Zawiera interfejs użytkownika z zakładkami importu, przeglądu danych, analiz, wykresów i widoków SQL.
 - `services/`
-  Warstwa pośrednia między GUI a bazą danych.
+  Udostępnia jedno API dla GUI i spina import, zapytania oraz analizy.
 - `queries/`
-  Zapytania SQL do filtrowania, porównań grup i widoków.
+  Zawiera zapytania SQL do filtrowania rekordów i odczytu gotowych widoków.
 - `analytics/`
-  Zapytania agregujące i dane do wykresów.
+  Zawiera agregacje do porównań grup oraz źródła danych do wykresów.
 - `database/`
-  Połączenie SQLite, schemat relacyjny i import CSV.
+  Odpowiada za połączenie z SQLite, definicję schematu i proces importu CSV.
 
 ## Przepływ danych
 
-1. Użytkownik wybiera plik CSV w GUI.
+1. Użytkownik wybiera plik CSV w aplikacji.
 2. Import uruchamia się w tle, aby nie blokować interfejsu.
-3. Warstwa `database/importer.py` czyści i normalizuje dane wejściowe.
-4. Schemat SQLite jest odtwarzany z `database/schema.sql`.
-5. Dane trafiają do tabel relacyjnych i widoków SQL używanych przez aplikację.
-6. GUI pobiera już tylko dane zapisane w SQLite.
+3. Dane są czyszczone i normalizowane w `database/importer.py`.
+4. Schemat bazy jest odtwarzany na podstawie `database/schema.sql`.
+5. Dane trafiają do tabel relacyjnych i widoków SQL.
+6. GUI korzysta już wyłącznie z danych zapisanych w SQLite.
 
-## Reguły czyszczenia danych
+## Model danych
 
-- kolumna wieku:
-  `>89` jest zamieniane na `89`, a końcowo pozostaje jedna kolumna `age`
-- kolumny wag:
-  wartości liczbowe są normalizowane do formatu numerycznego, także gdy wejście zawiera przecinek
-- puste pola tekstowe:
-  są uzupełniane wartością `brak danych`
-- masa przy wypisie:
-  jeśli brak wartości, przyjmowana jest masa przy przyjęciu
-- zmiana masy:
-  liczona automatycznie jako `masa przy wypisie - masa przy przyjęciu`
-- typ oddziału:
-  usuwane są dopiski w nawiasach
-- rozpoznania:
-  są mapowane do kontrolowanego, polskiego słownictwa medycznego
-
-## Najważniejsze pliki do omówienia
-
-- [app.py](./app.py)
-  uruchomienie aplikacji PyQt
-- [gui/main_window.py](./gui/main_window.py)
-  główne okno, zakładki i obsługa importu w tle
-- [services/ehr_service.py](./services/ehr_service.py)
-  warstwa pośrednia między GUI a SQL
-- [database/importer.py](./database/importer.py)
-  logika importu CSV i czyszczenia danych
-- [database/connection.py](./database/connection.py)
-  połączenie z SQLite i odtwarzanie schematu
-- [database/schema.sql](./database/schema.sql)
-  definicja tabel, widoków i triggera
-- [queries/patient_queries.py](./queries/patient_queries.py)
-  wyszukiwanie i filtrowanie rekordów
-- [analytics/group_comparison.py](./analytics/group_comparison.py)
-  agregacje do analiz grupowych i wykresów
-
-## Schemat bazy danych
-
-Schemat SQLite jest zdefiniowany w [database/schema.sql](./database/schema.sql).
-Wizualizacja ERD i zaleznosci widokow jest opisana w [database/schema_diagram.md](./database/schema_diagram.md).
-Offline SVG bez zaleznosci od podgladu Mermaid jest dostepny w [database/schema_diagram.svg](./database/schema_diagram.svg).
+Schemat bazy danych znajduje się w [database/schema.sql](./database/schema.sql), a opis relacji i widoków w [database/schema_diagram.md](./database/schema_diagram.md).
 
 ### Tabele główne
 
-- `import_rows`
-- `patients`
-- `admissions`
-- `care_unit_stays`
+- `import_rows` - tabela stagingowa przechowująca oczyszczone dane po imporcie,
+- `patients` - dane pacjentów,
+- `admissions` - hospitalizacje,
+- `care_unit_stays` - pobyty oddziałowe powiązane z hospitalizacją.
 
 ### Widoki SQL
 
-- `patient_overview`
-- `patient_summary`
-- `diagnosis_statistics`
-- `data_quality_report`
+- `patient_overview` - główny widok analityczny do filtrowania i wyszukiwania,
+- `patient_summary` - agregacja na poziomie pacjenta,
+- `diagnosis_statistics` - statystyki rozpoznań,
+- `data_quality_report` - raport braków danych po imporcie.
 
-### Logika bazy danych
+### Logika bazy
 
-- trigger `trg_care_unit_stays_validate_visit_number`
+- trigger `trg_care_unit_stays_validate_visit_number`, który blokuje zapis niepoprawnego `unit_visit_number`.
 
-## Import danych
+## Reguły czyszczenia danych
 
-1. Użytkownik uruchamia aplikację.
-2. W sekcji `Import danych` wybiera plik CSV.
-3. Import uruchamia się automatycznie po wyborze pliku.
-4. Dane są czyszczone, normalizowane i zapisywane do `ehr_app.db` w tle.
-5. Dalsza praca odbywa się już wyłącznie na danych SQL.
+Podczas importu aplikacja stosuje zestaw prostych, jawnych reguł:
 
-## Sekcje GUI
+- wartość wieku `>89` jest zamieniana na `89`,
+- wartości liczbowe z przecinkiem są zamieniane na poprawny format numeryczny,
+- puste pola tekstowe są uzupełniane wartością `brak danych`,
+- brakująca masa przy wypisie dziedziczy wartość masy przy przyjęciu,
+- `weight_change_kg` jest wyliczane automatycznie,
+- z nazw typów oddziałów usuwane są dopiski w nawiasach,
+- rozpoznania są tłumaczone i mapowane do spójnego, polskiego nazewnictwa.
+
+## Interfejs użytkownika
+
+Aplikacja składa się z pięciu głównych sekcji:
 
 - `Import danych`
-  Wybór pliku CSV, automatyczny import w tle, raport importu i szybkie podsumowanie bazy.
+  Wybór pliku CSV, automatyczny import w tle oraz podsumowanie wyniku importu.
 - `Przegląd i filtrowanie`
-  Wyszukiwanie i filtrowanie rekordów pacjentów oraz pobytów.
+  Wyszukiwanie rekordów pacjentów i pobytów według zestawu filtrów.
 - `Analizy grup pacjentów`
-  Porównania grup oraz statystyki rozpoznań.
+  Porównania grup i statystyki rozpoznań.
 - `Wykresy i wizualizacje`
-  Osadzony panel wykresów oparty na wynikach SQL.
+  Histogramy i wykresy słupkowe tworzone na podstawie danych SQL.
 - `Statystyki i widoki SQL`
-  Gotowe widoki bazy danych i raport jakości danych.
+  Odczyt gotowych widoków analitycznych i raportu jakości danych.
 
-## Instalacja
+## Uruchomienie projektu
 
-```powershell
-python -m pip install -r requirements.txt
-```
-
-## Uruchomienie na innym komputerze
-
-Najprostsza kolejność kroków:
+### Instalacja zależności
 
 ```powershell
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
+```
+
+### Uruchomienie aplikacji
+
+```powershell
 python app.py
 ```
 
-Upewnij się, że plik `EHR.csv` znajduje się w katalogu projektu, bo aplikacja korzysta z niego jako źródła importu.
+Warunek: plik `EHR.csv` powinien znajdować się w katalogu projektu.
 
-## Przygotowanie bazy testowej
-
-Jeśli chcesz zbudować bazę przed uruchomieniem GUI:
+### Przygotowanie bazy bez uruchamiania GUI
 
 ```powershell
 python scripts\prepare_demo_db.py --csv EHR.csv --db ehr_app.db
 ```
 
-## Uruchomienie aplikacji
+## Testy
 
-```powershell
-python app.py
-```
-
-## Test automatyczny
-
-Smoke test backendu:
+Smoke test backendu można uruchomić poleceniem:
 
 ```powershell
 python -m unittest discover -s tests -v
 ```
 
-Test sprawdza:
+Zakres testów obejmuje:
 
-- import CSV do SQLite
-- filtrowanie danych przez SQL
-- analizy grupowe
-- widoki SQL
-- podstawowe metryki projektu
+- import CSV do SQLite,
+- gotowość i zgodność schematu bazy,
+- filtrowanie danych przez SQL,
+- analizy grupowe,
+- odczyt widoków SQL,
+- podstawowe metryki po imporcie.
 
-## Przykładowy scenariusz ręcznego testu
+## Przykładowy scenariusz prezentacji
 
 1. Uruchom `python app.py`.
-2. W sekcji `Import danych` wskaż `EHR.csv`.
-3. Poczekaj, aż automatyczny import w tle się zakończy.
-4. Sprawdź, czy podsumowanie pokazuje:
+2. W sekcji `Import danych` wybierz plik `EHR.csv`.
+3. Po zakończeniu importu sprawdź, czy podsumowanie pokazuje:
    - `Pacjenci: 1091`
    - `Hospitalizacje: 1242`
    - `Pobyty oddziałowe: 1447`
-5. W sekcji `Przegląd i filtrowanie` ustaw filtr `Płeć = Kobieta` i uruchom wyszukiwanie.
-6. W sekcji `Analizy grup pacjentów` uruchom porównanie według `Status wypisu z oddziału`.
-7. W sekcji `Statystyki i widoki SQL` wczytaj `Podsumowanie pacjentów`.
-8. W sekcji `Wykresy i wizualizacje` wygeneruj:
-   - histogram wieku,
-   - wykres słupkowy liczby rekordów według statusu wypisu z oddziału.
-9. Wyeksportuj jedną tabelę do CSV i jeden wykres do PNG.
+4. W zakładce `Przegląd i filtrowanie` ustaw filtr `Płeć = Kobieta` i uruchom wyszukiwanie.
+5. W zakładce `Analizy grup pacjentów` wykonaj porównanie według `Status wypisu z oddziału`.
+6. W zakładce `Statystyki i widoki SQL` wczytaj `Podsumowanie pacjentów`.
+7. W zakładce `Wykresy i wizualizacje` wygeneruj histogram wieku lub wykres słupkowy dla wybranej grupy.
+8. Wyeksportuj jedną tabelę do CSV oraz jeden wykres do PNG.
+
+## Najważniejsze pliki
+
+- [app.py](./app.py) - punkt startowy aplikacji,
+- [gui/main_window.py](./gui/main_window.py) - główne okno i obsługa zakładek,
+- [gui/filter_panel.py](./gui/filter_panel.py) - współdzielony panel filtrów,
+- [services/ehr_service.py](./services/ehr_service.py) - fasada łącząca GUI z bazą danych,
+- [database/importer.py](./database/importer.py) - logika importu i czyszczenia danych,
+- [database/connection.py](./database/connection.py) - połączenie z SQLite i odbudowa schematu,
+- [database/schema.sql](./database/schema.sql) - definicja tabel, widoków i triggera,
+- [queries/patient_queries.py](./queries/patient_queries.py) - filtrowanie i metryki przeglądu,
+- [analytics/group_comparison.py](./analytics/group_comparison.py) - agregacje do analiz i wykresów,
+- [tests/test_backend_smoke.py](./tests/test_backend_smoke.py) - testy integracyjne backendu.
 
 ## Uwagi
 
-- interfejs użytkownika jest w całości po polsku
-- kod, nazwy klas i plików pozostają techniczne i spójne po angielsku
-- `ehr_app.db` jest plikiem roboczym i można go w każdej chwili odtworzyć z `EHR.csv`
+- interfejs użytkownika jest w całości po polsku,
+- kod źródłowy, nazwy modułów i klas pozostają techniczne i spójne po angielsku,
+- `ehr_app.db` jest plikiem roboczym i może zostać odtworzony z `EHR.csv` w dowolnym momencie.
